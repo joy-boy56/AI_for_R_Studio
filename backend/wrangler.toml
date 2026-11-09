@@ -1,0 +1,30 @@
+name = "rconsoleai-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (set via wrangler secret put)
+# NVIDIA_API_KEY = "your-nvidia-api-key"
+# OPENAI_API_KEY = "your-openai-compatible-key"
+# OPENAI_BASE_URL = "https://api.openai.com/v1"  # or compatible endpoint
+# RATE_LIMIT_PER_MINUTE = "60"
+# RATE_LIMIT_PER_HOUR = "1000"
+# ALLOWED_ORIGINS = "https://yourdomain.com,http://localhost:8080"
+
+[vars]
+ENVIRONMENT = "development"
+LOG_LEVEL = "info"
+
+# Limits
+[limits]
+cpu_ms = 50000
+
+# KV namespace for rate limiting (optional)
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT_KV"
+# id = "your-kv-namespace-id"
+
+# Durable Objects for advanced rate limiting (optional)
+# [[durable_objects.bindings]]
+# name = "RATE_LIMITER"
+# class_name = "RateLimiter"

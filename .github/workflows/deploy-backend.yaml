@@ -1,0 +1,98 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Workers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rconsoleai
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rconsoleai/backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd rconsoleai/backend
+          npm ci
+
+      - name: TypeScript check
+        run: |
+          cd rconsoleai/backend
+          npm run typecheck
+
+      - name: Lint
+        run: |
+          cd rconsoleai/backend
+          npm run lint
+
+      - name: Test
+        run: |
+          cd rconsoleai/backend
+          npm test
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: rconsoleai/backend
+          environment: ${{ github.event.inputs.environment || 'production' }}
+          command: deploy
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          WORKER_URL="${{ secrets.WORKER_URL }}"
+          if [ -n "$WORKER_URL" ]; then
+            echo "Verifying deployment at $WORKER_URL"
+            curl -f "$WORKER_URL/health" || exit 1
+            echo "Deployment verified successfully"
+          else
+            echo "WORKER_URL secret not set, skipping verification"
+          fi
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+
+  # Notify on failure
+  notify-failure:
+    if: failure()
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Backend deployment failed: ${{ github.run_id }}',
+              body: 'Backend deployment failed. Check workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+              labels: ['backend', 'deployment', 'failure']
+            })

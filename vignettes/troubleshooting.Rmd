@@ -1,0 +1,270 @@
+---
+title: "Troubleshooting Guide"
+author: "RConsoleAI Contributors"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Troubleshooting Guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Troubleshooting Guide
+
+Common issues and solutions for RConsoleAI.
+
+## Installation Issues
+
+### Package not found / Install fails
+```r
+# Ensure remotes is installed
+install.packages("remotes")
+
+# Install from GitHub
+remotes::install_github("yourusername/rconsoleai")
+
+# If fails, try with dependencies
+remotes::install_github("yourusername/rconsoleai", dependencies = TRUE)
+```
+
+### Missing dependencies
+```r
+# Install all suggested packages
+install.packages(c("httr2", "jsonlite", "R6", "testthat", "knitr", "rmarkdown"))
+
+# Then reinstall rconsoleai
+remotes::install_github("yourusername/rconsoleai")
+```
+
+### R version too old
+RConsoleAI requires R >= 4.1.0. Check your version:
+```r
+R.version.string
+# Update R from https://cran.r-project.org/
+```
+
+## Connection Issues
+
+### "Could not connect to AI Horde"
+- Check internet connection
+- AI Horde may be temporarily down
+- Try: `curl https://aihorde.net/api/v2/status/models`
+- Wait and retry
+
+### "Gateway connection failed"
+```r
+# Check your gateway URL
+rchat_config()
+
+# Test gateway directly
+httr2::request("https://your-worker.your-subdomain.workers.dev/health") |> 
+  httr2::req_perform() |> 
+  httr2::resp_status()
+# Should return 200
+```
+
+### Timeout errors
+```r
+# Increase timeout
+rchat_config(timeout = 120)  # 2 minutes
+
+# Or for single request
+rchat("prompt", timeout = 120)
+```
+
+## Provider Issues
+
+### AI Horde: No models available
+```r
+# Check models manually
+models <- rchat_models("horde")
+print(models)
+# If empty, AI Horde may be down
+```
+
+### AI Horde: Queue times too long
+- Popular models have longer queues
+- Try a different model: `/models` then `/model MODEL_NAME`
+- Use gateway provider for faster response
+
+### Gateway: "No providers configured"
+- Deploy backend with API keys
+- Check `rchat_config()` shows gateway_url
+- Verify secrets in Cloudflare: `npx wrangler secret list`
+
+### Gateway: "Authentication failed"
+- Verify API keys in Cloudflare secrets
+- Check key hasn't expired
+- Check provider quota/limits
+
+### Gateway: "Model not found"
+```r
+# List available models
+rchat_models("gateway")
+# Use exact model name from list
+```
+
+### Gateway: Rate limited
+```r
+# Check current limits
+rchat_status()
+
+# Increase backend limits (requires redeploy)
+# npx wrangler secret put RATE_LIMIT_PER_MINUTE "120"
+```
+
+## Chat Session Issues
+
+### Slash commands not working
+- Must start with `/` at beginning of line
+- No leading spaces: `/help` not ` /help`
+- Case insensitive: `/HELP` works
+
+### Conversation not persisting
+```r
+# Check persistence setting
+rchat_config()
+
+# Enable if disabled
+rchat_config(persist_history = TRUE)
+
+# Check file location
+conv <- Conversation$new()
+conv$file_path
+```
+
+### Colors not showing
+```r
+# Enable colors
+rchat_config(color_output = TRUE)
+
+# Windows: Use RStudio or Windows Terminal for best results
+# Standard cmd.exe may not support ANSI colors
+```
+
+### Escape/Ctrl+C doesn't exit
+- In RStudio: Use Stop button (red square)
+- In terminal: Ctrl+C should work
+- Type `/exit` to quit cleanly
+
+## R Programming Functions Issues
+
+### rchat_code / rchat_explain not working
+- Ensure provider is available: `rchat_status()`
+- Try simpler code first
+- Check for syntax errors in your code string
+
+### rchat_data: "Not a data frame"
+```r
+# Must pass a data.frame, not a tibble name as string
+rchat_data(mtcars)      # Correct
+rchat_data("mtcars")    # Wrong - passes string
+```
+
+### rchat_env: No variables shown
+```r
+# Variables must be in .GlobalEnv
+x <- 1:10  # Creates in global env
+rchat_env("What is x?")  # Will see x
+
+# In functions, variables are local
+my_func <- function() {
+  y <- 20
+  rchat_env("What is y?")  # Won't see y
+}
+```
+
+## Backend Deployment Issues
+
+### "wrangler: command not found"
+```bash
+npm install -g wrangler
+# Or use npx
+npx wrangler login
+```
+
+### "Secret not found" errors
+```bash
+# List secrets
+npx wrangler secret list
+
+# Add missing
+npx wrangler secret put NVIDIA_API_KEY
+```
+
+### Deployment fails
+```bash
+# Check wrangler.toml syntax
+npx wrangler deploy --dry-run
+
+# Check Node version (need 18+)
+node --version
+```
+
+### CORS errors in browser
+```bash
+# Set allowed origins
+npx wrangler secret put ALLOWED_ORIGINS "https://yourdomain.com"
+```
+
+## Performance Issues
+
+### Slow responses
+- AI Horde: Normal (queue-based)
+- Gateway: Check provider latency
+- Increase timeout: `rchat_config(timeout = 180)`
+
+### Memory issues with long conversations
+```r
+# Reduce history limit
+rchat_config(history_limit = 20)
+
+# Or disable persistence
+rchat_config(persist_history = FALSE)
+```
+
+## Getting Help
+
+### Enable debug logging
+```r
+# Set log level in options
+options(rconsoleai.debug = TRUE)
+```
+
+### Check package version
+```r
+packageVersion("rconsoleai")
+```
+
+### Report issues
+- [GitHub Issues](https://github.com/yourusername/rconsoleai/issues)
+- Include: R version, OS, error message, steps to reproduce
+- Use issue templates for bug reports
+
+### Common error codes
+| Error | Cause | Solution |
+|-------|-------|----------|
+| 401 | Auth failed | Check API keys |
+| 404 | Model not found | Check model name |
+| 429 | Rate limited | Wait / increase limits |
+| 500 | Server error | Check backend logs |
+| 503 | Provider unavailable | Try different provider |
+| 504 | Timeout | Increase timeout |
+
+## Known Limitations
+
+1. **No streaming** - AI Horde doesn't support streaming
+2. **Queue times** - AI Horde varies 10-60+ seconds
+3. **No offline mode** - Requires internet
+4. **Windows colors** - Best in RStudio/Windows Terminal
+5. **NVIDIA shared use** - Requires authorization for multi-user
+6. **Context window** - Limited by provider (typically 4k-8k tokens)
+7. **No code execution** - AI code must be manually copied and run

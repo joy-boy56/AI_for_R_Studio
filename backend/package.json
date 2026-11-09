@@ -1,0 +1,37 @@
+{
+  "name": "rconsoleai-backend",
+  "version": "0.1.0",
+  "description": "RConsoleAI Secure Backend Gateway - Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240000.0",
+    "@types/node": "^20.10.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "wrangler": "^3.20.0"
+  },
+  "keywords": [
+    "rconsoleai",
+    "ai",
+    "chatbot",
+    "cloudflare-workers",
+    "nvidia",
+    "nemotron"
+  ],
+  "author": "RConsoleAI Contributors",
+  "license": "MIT"
+}

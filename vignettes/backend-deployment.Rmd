@@ -1,0 +1,264 @@
+---
+title: "Backend Deployment Guide"
+author: "RConsoleAI Contributors"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Backend Deployment Guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Backend Deployment Guide
+
+This guide covers deploying the RConsoleAI secure gateway to Cloudflare Workers.
+
+## Why Deploy a Backend?
+
+The backend gateway enables:
+- **NVIDIA Nemotron** models (requires API key)
+- **OpenAI-compatible** endpoints (OpenAI, Azure, local models)
+- **Rate limiting** and abuse prevention
+- **Credential isolation** - API keys never leave Cloudflare
+- **Custom provider configurations**
+
+## Prerequisites
+
+1. **Cloudflare Account** - Free tier at [cloudflare.com](https://cloudflare.com)
+2. **Node.js 18+** and npm
+3. **Wrangler CLI** - `npm install -g wrangler`
+4. **API Keys** for desired providers:
+   - NVIDIA: Get from [build.nvidia.com](https://build.nvidia.com/)
+   - OpenAI: Get from [platform.openai.com](https://platform.openai.com/)
+
+## Quick Deploy
+
+```bash
+# 1. Clone and enter backend directory
+cd backend
+
+# 2. Install dependencies
+npm install
+
+# 3. Login to Cloudflare
+npx wrangler login
+
+# 4. Set secrets (choose providers you want)
+npx wrangler secret put NVIDIA_API_KEY
+# Enter your NVIDIA API key when prompted
+
+npx wrangler secret put OPENAI_API_KEY
+# Enter your OpenAI API key when prompted
+
+# Optional: Custom OpenAI endpoint (Azure, local, etc.)
+npx wrangler secret put OPENAI_BASE_URL
+# Enter: https://api.openai.com/v1 (or your endpoint)
+
+# 5. Deploy
+npx wrangler deploy
+
+# 6. Note the deployed URL (e.g., https://rconsoleai-gateway.your-subdomain.workers.dev)
+```
+
+## Configuration Options
+
+### Environment Variables (wrangler.toml)
+
+```toml
+[vars]
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"
+
+# Rate limits (per IP)
+# RATE_LIMIT_PER_MINUTE = "60"
+# RATE_LIMIT_PER_HOUR = "1000"
+
+# CORS - restrict to your domains
+# ALLOWED_ORIGINS = "https://yourdomain.com,http://localhost:8080"
+```
+
+### Secrets (set via `wrangler secret put`)
+
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `NVIDIA_API_KEY` | For NVIDIA | NVIDIA API key from build.nvidia.com |
+| `OPENAI_API_KEY` | For OpenAI-compatible | OpenAI or compatible API key |
+| `OPENAI_BASE_URL` | Optional | Custom endpoint (default: api.openai.com/v1) |
+| `OPENAI_ORGANIZATION` | Optional | OpenAI organization ID |
+| `RATE_LIMIT_PER_MINUTE` | Optional | Per-IP per-minute limit (default: 60) |
+| `RATE_LIMIT_PER_HOUR` | Optional | Per-IP per-hour limit (default: 1000) |
+| `ALLOWED_ORIGINS` | Optional | Comma-separated allowed origins for CORS |
+
+## Local Development
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+This starts a local development server at `http://localhost:8787`.
+
+Test locally:
+```bash
+# Health check
+curl http://localhost:8787/health
+
+# List models
+curl http://localhost:8787/models
+
+# Chat
+curl -X POST http://localhost:8787/chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hello"}]}'
+```
+
+## Configure R Package
+
+Once deployed, configure RConsoleAI:
+
+```r
+library(rconsoleai)
+
+# Set your gateway URL
+rchat_config(gateway_url = "https://your-worker.your-subdomain.workers.dev")
+
+# Use gateway provider
+rchat_provider("gateway")
+
+# Or use auto (tries gateway first)
+rchat_provider("auto")
+
+# Test
+rchat("Hello from RConsoleAI with gateway!")
+```
+
+## Verifying Deployment
+
+### Check Health
+```bash
+curl https://your-worker.your-subdomain.workers.dev/health
+```
+
+Should return:
+```json
+{
+  "status": "ok",
+  "service": "rconsoleai-gateway",
+  "version": "0.1.0",
+  "timestamp": "2024-..."
+}
+```
+
+### Check Models
+```bash
+curl https://your-worker.your-subdomain.workers.dev/models
+```
+
+Should list available models from configured providers.
+
+### Check Providers
+```bash
+curl https://your-worker.your-subdomain.workers.dev/providers
+```
+
+Shows which providers are configured.
+
+## Monitoring
+
+### Logs
+```bash
+npx wrangler tail
+```
+
+### Metrics
+View in Cloudflare Dashboard > Workers > your-worker > Metrics
+
+### Errors
+Check Cloudflare Dashboard > Workers > your-worker > Logs
+
+## Updating Secrets
+
+```bash
+npx wrangler secret put NVIDIA_API_KEY
+# Enter new key
+
+npx wrangler deploy
+```
+
+## Production Considerations
+
+### Custom Domain
+1. Cloudflare Dashboard > Workers > your-worker > Triggers
+2. Add Custom Domain
+3. Update `rchat_config(gateway_url = "https://ai.yourdomain.com")`
+
+### KV for Rate Limiting (Advanced)
+For multi-instance rate limiting, uncomment in wrangler.toml:
+```toml
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "your-kv-namespace-id"
+```
+
+### Durable Objects (Advanced)
+For more sophisticated rate limiting:
+```toml
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+```
+
+## Troubleshooting
+
+### "Worker not found"
+- Verify deployment: `npx wrangler deploy`
+- Check subdomain in Cloudflare Dashboard
+
+### "Secrets not found"
+- Verify: `npx wrangler secret list`
+- Re-add if missing
+
+### "CORS error"
+- Set `ALLOWED_ORIGINS` secret
+- Or use `*` for development only
+
+### "Rate limited"
+- Check limits in wrangler.toml
+- Increase `RATE_LIMIT_PER_MINUTE`/`PER_HOUR`
+
+### "Model not available"
+- Verify provider API key has access to model
+- Check provider status page
+- Run `/models` in R to see available
+
+## Security Notes
+
+- **Never commit secrets** to git
+- **Use `wrangler secret put`** for all credentials
+- **Restrict CORS** to known domains in production
+- **Monitor usage** in Cloudflare Dashboard
+- **Rotate keys periodically**
+
+## Cost Estimation
+
+Cloudflare Workers Free Tier:
+- 100,000 requests/day
+- 10ms CPU time/request
+- Sufficient for personal/small team use
+
+Paid plans start at $5/month for higher limits.
+
+## Support
+
+- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
+- [Wrangler CLI Docs](https://developers.cloudflare.com/workers/wrangler/)
+- [RConsoleAI Issues](https://github.com/yourusername/rconsoleai/issues)

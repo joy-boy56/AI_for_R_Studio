@@ -1,0 +1,76 @@
+# R package
+.Rbuildignore
+.Rhistory
+.RData
+.Ruserdata
+*.rds
+*.RDS
+/data/*.rda
+/data/*.RData
+/vignettes/*.html
+/vignettes/*.pdf
+/pkgdown/
+
+# R package build
+rconsoleai_*.tar.gz
+rconsoleai_*.tgz
+*.Rcheck/
+.Rcheck/
+
+# Devtools
+*.Rproj.user/
+.Rproj/
+
+# renv
+renv/library/
+renv/python/
+renv/*.cache
+!renv/settings.dcf
+!renv/activate.R
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Backend
+backend/node_modules/
+backend/dist/
+backend/.wrangler/
+backend/wrangler.toml.local
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# IDE specific
+*.iml
+.idea/
+.vscode/
+*.swp
+*.swo

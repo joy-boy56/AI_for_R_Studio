@@ -1,0 +1,30 @@
+Package: rconsoleai
+Title: RConsoleAI - AI Chatbot for R and RStudio Console
+Version: 0.1.0
+Authors@R: 
+    person("RConsoleAI Contributors", role = c("aut", "cre"),
+           email = "rconsoleai@example.com",
+           comment = c(ORCID = "0000-0000-0000-0000"))
+Description: An AI chatbot that works directly inside the R and RStudio Console.
+    Provides interactive chat sessions, code debugging, code explanation,
+    dataset assistance, and code generation capabilities. Uses AI Horde as
+    the default free provider with optional secure backend integration for
+    additional providers. No local models or API keys required for basic usage.
+License: MIT + file LICENSE
+URL: https://github.com/yourusername/rconsoleai
+BugReports: https://github.com/yourusername/rconsoleai/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Imports:
+    httr2 (>= 1.0.0),
+    jsonlite (>= 1.8.0),
+    R6 (>= 2.5.0)
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+Config/Needs/website: rconsoleai
+Depends:
+    R (>= 4.1.0)

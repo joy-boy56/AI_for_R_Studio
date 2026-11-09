@@ -1,0 +1,206 @@
+---
+title: "Getting Started with RConsoleAI"
+author: "RConsoleAI Contributors"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with RConsoleAI}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE  # Set to TRUE to run examples
+)
+```
+
+# Getting Started with RConsoleAI
+
+RConsoleAI is an AI chatbot that works directly inside the R and RStudio Console. It requires no local models, no Ollama, and no API keys for basic usage.
+
+## Installation
+
+```r
+# Install from GitHub
+install.packages("remotes")
+remotes::install_github("yourusername/rconsoleai")
+
+# Load the package
+library(rconsoleai)
+```
+
+## Your First Chat
+
+Start an interactive chat session:
+
+```r
+rchat()
+```
+
+You'll see a welcome banner and can start chatting immediately:
+
+```text
+========================================
+          RConsoleAI
+      Your AI Programming Assistant
+========================================
+
+Provider: AI Horde
+Model: Automatically selected
+Status: Connected
+
+Type /help for commands.
+Type /exit to quit.
+
+You: 
+```
+
+Try asking a question:
+
+```
+You: Explain the pnorm function in R.
+
+RConsoleAI:
+The `pnorm()` function in R calculates the cumulative distribution function (CDF) 
+for the normal distribution...
+```
+
+## Single Prompt Mode
+
+For quick questions without starting a full session:
+
+```r
+rchat("How do I do a t-test in R?")
+```
+
+## Slash Commands
+
+During an interactive session, use these commands:
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show available commands |
+| `/exit`, `/quit` | End session |
+| `/clear` | Clear conversation history |
+| `/models` | List available models |
+| `/model` | Show current model |
+| `/model NAME` | Change model |
+| `/provider` | Show current provider |
+| `/provider horde` | Use AI Horde (free) |
+| `/provider gateway` | Use secure backend |
+| `/provider auto` | Auto-select provider |
+| `/system` | Show system prompt |
+| `/system TEXT` | Update system prompt |
+| `/status` | Show connection info |
+| `/retry` | Retry last request |
+| `/save [file]` | Save conversation |
+| `/load [file]` | Load conversation |
+| `/history` | Show message history |
+| `/context` | Show R environment |
+
+## Configuration
+
+View current settings:
+
+```r
+rchat_config()
+```
+
+Change defaults:
+
+```r
+rchat_config(
+  provider = "auto",           # "horde", "gateway", or "auto"
+  max_tokens = 700,            # Response length limit
+  timeout = 90,                # Request timeout (seconds)
+  history_limit = 50,          # Conversation history limit
+  persist_history = TRUE,      # Save history between sessions
+  color_output = TRUE,         # Colored console output
+  gateway_url = NULL           # Your backend URL (optional)
+)
+```
+
+## Provider Selection
+
+RConsoleAI supports multiple AI providers:
+
+### AI Horde (Default, Free)
+- No API key required
+- Community-run distributed inference
+- Dynamic model discovery
+- Queue times vary (10-60+ seconds)
+
+```r
+rchat_provider("horde")
+```
+
+### Secure Gateway (Optional)
+Requires a deployed Cloudflare Worker backend for authenticated providers (NVIDIA Nemotron, OpenAI-compatible).
+
+```r
+rchat_config(gateway_url = "https://your-worker.your-subdomain.workers.dev")
+rchat_provider("gateway")
+```
+
+### Auto Selection (Recommended)
+Tries gateway first, falls back to AI Horde:
+
+```r
+rchat_provider("auto")
+```
+
+## R Programming Integration
+
+RConsoleAI includes specialized functions for R development:
+
+### Debug Code
+```r
+rchat_code("
+x <- rnorm(100)
+hist(x)
+")
+```
+
+### Explain Code
+```r
+rchat_explain("
+model <- lm(mpg ~ wt, data = mtcars)
+summary(model)
+")
+```
+
+### Analyze Dataset
+```r
+rchat_data(mtcars)
+rchat_data(iris, include_data = TRUE)  # With sample values
+```
+
+### Ask About Environment
+```r
+rchat_env("What data frames do I have loaded?")
+rchat_env("What's in my dataframe df?", include_values = TRUE)
+```
+
+## Conversation Management
+
+Conversations persist between sessions by default. Save/load manually:
+
+```r
+# Save
+conv <- rchat()
+# ... chat ...
+rchat_save(conv, "my_chat.rds")
+
+# Load later
+conv2 <- rchat_load("my_chat.rds")
+rchat(conversation = conv2)
+```
+
+## Next Steps
+
+- Read the [Provider Guide](provider-guide.html) for advanced provider configuration
+- See [Backend Deployment](backend-deployment.html) for setting up the secure gateway
+- Check [Troubleshooting](troubleshooting.html) for common issues

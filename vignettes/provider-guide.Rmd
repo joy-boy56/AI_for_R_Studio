@@ -1,0 +1,169 @@
+---
+title: "Provider Guide"
+author: "RConsoleAI Contributors"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Provider Guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Provider Guide
+
+RConsoleAI uses a modular provider architecture. This guide explains how to configure and use each provider.
+
+## Provider Overview
+
+| Provider | Cost | Setup | Best For |
+|----------|------|-------|----------|
+| AI Horde | Free | None | General use, learning |
+| NVIDIA Nemotron | Free* | Backend deployment | High-quality responses |
+| OpenAI-compatible | Varies | Backend deployment | Custom/private models |
+
+*\*NVIDIA free tier has usage limits. Shared multi-user service requires authorization.*
+
+## AI Horde (Default)
+
+### How It Works
+AI Horde is a distributed inference network. Your requests are queued and processed by community workers.
+
+### Configuration
+```r
+# Use AI Horde explicitly
+rchat_provider("horde")
+
+# List available models
+rchat_models("horde")
+
+# Select specific model
+rchat_provider("horde")
+rchat_models()  # Shows available models
+# Then in interactive session: /model MODEL_NAME
+```
+
+### Model Discovery
+Models are discovered dynamically at runtime. Workers come and go, so availability changes.
+
+```r
+models <- rchat_models("horde")
+# Returns list with: name, count (workers), workers list
+```
+
+### Limitations
+- **Queue times**: 10-60+ seconds depending on model popularity
+- **No streaming**: Responses arrive all at once
+- **Variable quality**: Depends on available workers
+- **Not for production SLAs**: Best-effort service
+
+## Secure Gateway
+
+### Overview
+The gateway is a Cloudflare Worker that proxies requests to authenticated providers. Your API keys never leave the backend.
+
+### Prerequisites
+1. Cloudflare account (free tier works)
+2. API keys for desired providers
+3. Deployed Worker (see [Backend Deployment](backend-deployment.html))
+
+### Configuration
+```r
+# Set your gateway URL
+rchat_config(gateway_url = "https://your-worker.your-subdomain.workers.dev")
+
+# Use gateway
+rchat_provider("gateway")
+
+# List models
+rchat_models("gateway")
+```
+
+### NVIDIA Nemotron
+Requires `NVIDIA_API_KEY` in Cloudflare secrets.
+
+```bash
+npx wrangler secret put NVIDIA_API_KEY
+```
+
+**Important**: NVIDIA developer/free API access does NOT automatically permit operating a publicly shared multi-user AI service. Verify NVIDIA terms and obtain required authorization.
+
+### OpenAI-Compatible
+Works with any OpenAI-compatible endpoint (OpenAI, Azure, local models via Ollama/vLLM/TGI).
+
+```bash
+npx wrangler secret put OPENAI_API_KEY
+npx wrangler secret put OPENAI_BASE_URL  # Optional, defaults to api.openai.com/v1
+```
+
+For Azure OpenAI:
+```bash
+npx wrangler secret put OPENAI_BASE_URL "https://your-resource.openai.azure.com/"
+npx wrangler secret put OPENAI_API_KEY "your-azure-key"
+```
+
+### Rate Limiting
+Default limits (configurable via environment variables):
+- 60 requests/minute per IP
+- 1000 requests/hour per IP
+- Global limits with 10x buffer
+
+```bash
+npx wrangler secret put RATE_LIMIT_PER_MINUTE "60"
+npx wrangler secret put RATE_LIMIT_PER_HOUR "1000"
+```
+
+## Auto Provider Selection
+
+```r
+rchat_provider("auto")
+```
+
+Logic:
+1. If gateway URL configured AND gateway healthy → use gateway
+2. Otherwise → use AI Horde
+
+This provides the best experience: premium models when available, free fallback otherwise.
+
+## Custom Providers
+
+To add a new provider:
+
+1. Create `R/new_provider.R` inheriting from `ProviderBase`
+2. Implement required methods:
+   - `fetch_models()`
+   - `chat()`
+   - `is_available()`
+3. Register in `ProviderManager$initialize()`
+4. Add to `rchat_provider()` valid options
+5. Add tests in `tests/testthat/test-new_provider.R`
+
+See existing providers in `R/horde_provider.R` and `R/gateway_provider.R` for reference.
+
+## Troubleshooting Providers
+
+### AI Horde: No models available
+- Check internet connection
+- AI Horde may be temporarily down
+- Try again in a few minutes
+
+### Gateway: Authentication failed
+- Verify API keys in Cloudflare secrets
+- Check key permissions and quota
+- Check Cloudflare Worker logs
+
+### Gateway: Model not found
+- Run `rchat_models("gateway")` to see available models
+- Some models may not be available in your region/plan
+
+### General: Timeout errors
+- Increase timeout: `rchat_config(timeout = 120)`
+- Try a different model
+- Check network connectivity

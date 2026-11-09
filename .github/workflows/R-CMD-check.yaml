@@ -1,0 +1,108 @@
+name: R-CMD-check
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest, r: 'release'}
+          - {os: macOS-latest, r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'devel', experimental: true}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::devtools
+            any::rcmdcheck
+            any::testthat
+            any::roxygen2
+            any::httr2
+            any::jsonlite
+            any::R6
+
+      - name: Check R version
+        run: R --version
+
+      - name: Install package dependencies
+        run: |
+          R -e "devtools::install_deps(dependencies = TRUE)"
+
+      - name: Generate documentation
+        run: |
+          R -e "devtools::document()"
+
+      - name: Run tests
+        run: |
+          R -e "devtools::test()"
+
+      - name: Run R CMD check
+        run: |
+          R -e "rcmdcheck::rcmdcheck(args = c('--no-manual', '--as-cran'), error_on = 'warning', check_dir = 'check')"
+
+      - name: Upload check results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-rcheck-results
+          path: check/
+
+  # Backend checks
+  backend-check:
+    runs-on: ubuntu-latest
+    name: Backend TypeScript Check
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rconsoleai
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: rconsoleai/backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd rconsoleai/backend
+          npm ci
+
+      - name: TypeScript check
+        run: |
+          cd rconsoleai/backend
+          npm run typecheck
+
+      - name: Lint
+        run: |
+          cd rconsoleai/backend
+          npm run lint
+
+      - name: Test
+        run: |
+          cd rconsoleai/backend
+          npm test
