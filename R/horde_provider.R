@@ -31,14 +31,14 @@ AIHordeProvider <- R6::R6Class(
     #' @description Fetch available text models from AI Horde
     #' @return List of model info
     fetch_models = function() {
-      req <- httr2::request(self$base_url) %>%
-        httr2::req_url_path_append("status/models") %>%
-        httr2::req_url_query(type = "text") %>%
+      req <- httr2::request(self$base_url) |>
+        httr2::req_url_path_append("status/models") |>
+        httr2::req_url_query(type = "text") |>
         httr2::req_headers(
           "Content-Type" = "application/json",
           "User-Agent" = self$client_id
-        ) %>%
-        httr2::req_timeout(30) %>%
+        ) |>
+        httr2::req_timeout(30) |>
         httr2::req_error(is_error = function(resp) FALSE)
       
       resp <- httr2::req_perform(req)
@@ -73,15 +73,15 @@ AIHordeProvider <- R6::R6Class(
     #' @param payload Request payload (prompt, params, models)
     #' @return Job UUID
     submit_generation = function(payload) {
-      req <- httr2::request(self$base_url) %>%
-        httr2::req_url_path_append("generate", "text", "async") %>%
+      req <- httr2::request(self$base_url) |>
+        httr2::req_url_path_append("generate", "text", "async") |>
         httr2::req_headers(
           "Content-Type" = "application/json",
           "User-Agent" = self$client_id,
           "apikey" = "0000000000"  # Anonymous access
-        ) %>%
-        httr2::req_body_json(payload) %>%
-        httr2::req_timeout(60) %>%
+        ) |>
+        httr2::req_body_json(payload) |>
+        httr2::req_timeout(60) |>
         httr2::req_error(is_error = function(resp) FALSE)
       
       resp <- httr2::req_perform(req)
@@ -110,13 +110,13 @@ AIHordeProvider <- R6::R6Class(
     #' @param job_id Job UUID
     #' @return Job status data
     check_status = function(job_id) {
-      req <- httr2::request(self$base_url) %>%
-        httr2::req_url_path_append("generate", "text", "status", job_id) %>%
+      req <- httr2::request(self$base_url) |>
+        httr2::req_url_path_append("generate", "text", "status", job_id) |>
         httr2::req_headers(
           "User-Agent" = self$client_id,
           "apikey" = "0000000000"
-        ) %>%
-        httr2::req_timeout(30) %>%
+        ) |>
+        httr2::req_timeout(30) |>
         httr2::req_error(is_error = function(resp) FALSE)
       
       resp <- httr2::req_perform(req)

@@ -30,10 +30,10 @@ GatewayProvider <- R6::R6Class(
         return(list())
       }
       
-      req <- httr2::request(self$gateway_url) %>%
-        httr2::req_url_path_append("models") %>%
-        httr2::req_headers("Content-Type" = "application/json") %>%
-        httr2::req_timeout(30) %>%
+      req <- httr2::request(self$gateway_url) |>
+        httr2::req_url_path_append("models") |>
+        httr2::req_headers("Content-Type" = "application/json") |>
+        httr2::req_timeout(30) |>
         httr2::req_error(is_error = function(resp) FALSE)
       
       if (!is.null(self$api_key)) {
@@ -70,11 +70,11 @@ GatewayProvider <- R6::R6Class(
         stream = stream
       )
       
-      req <- httr2::request(self$gateway_url) %>%
-        httr2::req_url_path_append("chat") %>%
-        httr2::req_headers("Content-Type" = "application/json") %>%
-        httr2::req_body_json(payload) %>%
-        httr2::req_timeout(rconsoleai_options("timeout")) %>%
+      req <- httr2::request(self$gateway_url) |>
+        httr2::req_url_path_append("chat") |>
+        httr2::req_headers("Content-Type" = "application/json") |>
+        httr2::req_body_json(payload) |>
+        httr2::req_timeout(rconsoleai_options("timeout")) |>
         httr2::req_error(is_error = function(resp) FALSE)
       
       if (!is.null(self$api_key)) {
@@ -134,9 +134,9 @@ GatewayProvider <- R6::R6Class(
       if (is.null(self$gateway_url)) return(FALSE)
       
       tryCatch({
-        req <- httr2::request(self$gateway_url) %>%
-          httr2::req_url_path_append("health") %>%
-          httr2::req_timeout(10) %>%
+        req <- httr2::request(self$gateway_url) |>
+          httr2::req_url_path_append("health") |>
+          httr2::req_timeout(10) |>
           httr2::req_error(is_error = function(resp) FALSE)
         
         resp <- httr2::req_perform(req)

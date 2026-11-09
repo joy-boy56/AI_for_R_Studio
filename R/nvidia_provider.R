@@ -57,13 +57,13 @@ NVIDIAProvider <- R6::R6Class(
         return(list())
       }
       
-      req <- httr2::request(self$base_url) %>%
-        httr2::req_url_path_append("models") %>%
+      req <- httr2::request(self$base_url) |>
+        httr2::req_url_path_append("models") |>
         httr2::req_headers(
           "Content-Type" = "application/json",
           "Authorization" = paste("Bearer", api_key)
-        ) %>%
-        httr2::req_timeout(30) %>%
+        ) |>
+        httr2::req_timeout(30) |>
         httr2::req_error(is_error = function(resp) FALSE)
       
       resp <- httr2::req_perform(req)
@@ -129,14 +129,14 @@ NVIDIAProvider <- R6::R6Class(
         top_p = 0.9
       )
       
-      req <- httr2::request(self$base_url) %>%
-        httr2::req_url_path_append("chat/completions") %>%
+      req <- httr2::request(self$base_url) |>
+        httr2::req_url_path_append("chat/completions") |>
         httr2::req_headers(
           "Content-Type" = "application/json",
           "Authorization" = paste("Bearer", api_key)
-        ) %>%
-        httr2::req_body_json(payload) %>%
-        httr2::req_timeout(rconsoleai_options("timeout")) %>%
+        ) |>
+        httr2::req_body_json(payload) |>
+        httr2::req_timeout(rconsoleai_options("timeout")) |>
         httr2::req_error(is_error = function(resp) FALSE)
       
       if (stream) {
@@ -224,12 +224,12 @@ NVIDIAProvider <- R6::R6Class(
       
       tryCatch({
         # Make a direct API call to verify the key works
-        req <- httr2::request(self$base_url) %>%
-          httr2::req_url_path_append("models") %>%
+        req <- httr2::request(self$base_url) |>
+          httr2::req_url_path_append("models") |>
           httr2::req_headers(
             "Authorization" = paste("Bearer", api_key)
-          ) %>%
-          httr2::req_timeout(10) %>%
+          ) |>
+          httr2::req_timeout(10) |>
           httr2::req_error(is_error = function(resp) FALSE)
         
         resp <- httr2::req_perform(req)
@@ -246,12 +246,12 @@ NVIDIAProvider <- R6::R6Class(
       }
       
       tryCatch({
-        req <- httr2::request(self$base_url) %>%
-          httr2::req_url_path_append("models") %>%
+        req <- httr2::request(self$base_url) |>
+          httr2::req_url_path_append("models") |>
           httr2::req_headers(
             "Authorization" = paste("Bearer", api_key)
-          ) %>%
-          httr2::req_timeout(10) %>%
+          ) |>
+          httr2::req_timeout(10) |>
           httr2::req_error(is_error = function(resp) FALSE)
         
         resp <- httr2::req_perform(req)
