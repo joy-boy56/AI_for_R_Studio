@@ -53,15 +53,8 @@ NVIDIAProvider <- R6::R6Class(
     fetch_models = function() {
       api_key <- self$get_api_key()
       if (is.null(api_key)) {
-        # Return default model as fallback when no credentials
-        return(list(
-          list(
-            id = self$default_model,
-            name = self$default_model,
-            provider = "nvidia",
-            owned_by = "nvidia"
-          )
-        ))
+        # No credentials - return empty so is_available() is FALSE
+        return(list())
       }
       
       req <- httr2::request(self$base_url) %>%
@@ -74,48 +67,36 @@ NVIDIAProvider <- R6::R6Class(
         httr2::req_error(is_error = function(resp) FALSE)
       
       resp <- httr2::req_perform(req)
+      status <- httr2::resp_status(resp)
       
-      if (httr2::resp_status(resp) != 200) {
-        # Return default model as fallback
-        return(list(
-          list(
-            id = self$default_model,
-            name = self$default_model,
-            provider = "nvidia",
-            owned_by = "nvidia"
-          )
-        ))
+      # On auth failure or any non-200, return empty list (not a fallback model)
+      # so is_available() correctly reports FALSE
+      if (status != 200) {
+        return(list())
       }
       
       data <- httr2::resp_body_json(resp)
       
-      # Filter for chat/completion models
-      chat_models <- (data$data %||% data) %>%
-        Filter(function(m) {
-          id <- m$id %||% m$name
-          grepl("nemotron|llama|mistral|mixtral", tolower(id))
-        }, .) %>%
-        lapply(function(m) {
-          list(
-            id = m$id,
-            name = m$id,
-            provider = "nvidia",
-            owned_by = m$owned_by %||% "nvidia"
-          )
-        })
-      
-      if (length(chat_models) == 0) {
-        chat_models <- list(
-          list(
-            id = self$default_model,
-            name = self$default_model,
-            provider = "nvidia",
-            owned_by = "nvidia"
-          )
-        )
+      # Parse model list
+      raw_models <- data$data %||% data
+      if (!is.list(raw_models)) {
+        return(list())
       }
       
-      chat_models
+      # Filter for chat-capable models
+      chat_models <- Filter(function(m) {
+        id <- m$id %||% m$name %||% ""
+        grepl("nemotron|llama|mistral|mixtral|qwen|deepseek", tolower(id))
+      }, raw_models)
+      
+      lapply(chat_models, function(m) {
+        list(
+          id = m$id,
+          name = m$id,
+          provider = "nvidia",
+          owned_by = m$owned_by %||% "nvidia"
+        )
+      })
     },
     
     #' @description Send chat completion request to NVIDIA
@@ -235,15 +216,24 @@ NVIDIAProvider <- R6::R6Class(
       stop("Streaming not yet implemented for NVIDIA provider")
     },
     
-    #' @description Check if provider is available
+    #' @description Check if provider is available (valid key + API reachable)
     #' @return Logical
     is_available = function() {
       api_key <- self$get_api_key()
-      if (is.null(api_key)) return(FALSE)
+      if (is.null(api_key) || nchar(api_key) == 0) return(FALSE)
       
       tryCatch({
-        models <- self$get_models()
-        length(models) > 0
+        # Make a direct API call to verify the key works
+        req <- httr2::request(self$base_url) %>%
+          httr2::req_url_path_append("models") %>%
+          httr2::req_headers(
+            "Authorization" = paste("Bearer", api_key)
+          ) %>%
+          httr2::req_timeout(10) %>%
+          httr2::req_error(is_error = function(resp) FALSE)
+        
+        resp <- httr2::req_perform(req)
+        httr2::resp_status(resp) == 200
       }, error = function(e) FALSE)
     },
     

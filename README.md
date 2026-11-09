@@ -1,6 +1,6 @@
 # RConsoleAI
 
-[![R-CMD-check](https://github.com/yourusername/rconsoleai/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/yourusername/rconsoleai/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/joy-boy56/AI_for_R_Studio/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/joy-boy56/AI_for_R_Studio/actions/workflows/R-CMD-check.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![R Version](https://img.shields.io/badge/R-%3E%3D%204.1.0-blue.svg)](https://www.r-project.org/)
 
@@ -33,7 +33,7 @@ RConsoleAI lets you chat with AI models, debug code, explain code, analyze datas
 ```r
 # Install from GitHub (CRAN coming soon)
 install.packages("remotes")
-remotes::install_github("yourusername/rconsoleai")
+remotes::install_github("joy-boy56/AI_for_R_Studio")
 
 # Load and start chatting
 library(rconsoleai)
@@ -62,7 +62,7 @@ You:
 
 ```r
 install.packages("remotes")
-remotes::install_github("yourusername/rconsoleai")
+remotes::install_github("joy-boy56/AI_for_R_Studio")
 ```
 
 ### From CRAN (Future)

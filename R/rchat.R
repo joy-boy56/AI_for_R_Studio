@@ -125,11 +125,16 @@ run_interactive_session <- function(provider, conversation, max_tokens, temperat
     if (startsWith(input, "/")) {
       result <- handle_slash_command(input, provider, conversation, max_tokens, temperature, pm)
       if (identical(result, "exit")) break
+      # Re-resolve provider after slash commands (e.g., /provider changed it)
+      provider <- tryCatch(pm$resolve_provider(), error = function(e) provider)
       next
     }
     
     # Skip empty messages
     if (nchar(input) == 0) next
+    
+    # Re-resolve provider each turn so /provider changes take effect
+    provider <- tryCatch(pm$resolve_provider(), error = function(e) provider)
     
     # Process user message
     conversation$add_message("user", input)
@@ -336,12 +341,16 @@ handle_provider_command <- function(args) {
   }
   
   pm$set_provider(provider_name)
+  # Clear model since models are provider-specific
+  pm$set_model(NULL)
   cat("Provider set to: ", provider_name, "\n", sep = "")
   
-  # Verify availability
+  # Show what will be resolved (without making network calls)
   new_provider <- tryCatch(pm$resolve_provider(), error = function(e) NULL)
-  if (is.null(new_provider) || !new_provider$is_available()) {
-    cat("Warning: Provider may not be available.\n")
+  if (is.null(new_provider)) {
+    cat("Warning: Provider could not be resolved. Check credentials/configuration.\n")
+  } else {
+    cat("Active provider: ", toupper(new_provider$name), "\n", sep = "")
   }
 }
 

@@ -64,17 +64,17 @@ ProviderManager <- R6::R6Class(
       if (name == "auto") {
         # Try NVIDIA first if credentials are available
         nvidia <- self$providers[["nvidia"]]
-        if (!is.null(nvidia) && nvidia$has_credentials() && nvidia$is_available()) {
+        if (!is.null(nvidia) && nvidia$has_credentials()) {
           return(nvidia)
         }
-        # Try gateway if configured and available
+        # Try gateway if configured
         gateway <- self$providers[["gateway"]]
-        if (!is.null(gateway$gateway_url) && gateway$is_available()) {
+        if (!is.null(gateway) && !is.null(gateway$gateway_url)) {
           return(gateway)
         }
-        # Fall back to AI Horde
+        # Fall back to AI Horde (always available as the default free provider)
         horde <- self$providers[["horde"]]
-        if (horde$is_available()) {
+        if (!is.null(horde)) {
           return(horde)
         }
         stop(ProviderUnavailableError("No providers available"))
@@ -85,14 +85,12 @@ ProviderManager <- R6::R6Class(
         stop(ProviderError(sprintf("Provider not found: %s", name)))
       }
       
-      if (!provider$is_available()) {
-        if (name == "nvidia") {
-          stop(ProviderUnavailableError(
-            "NVIDIA provider unavailable. Check NVIDIA_API_KEY is set and model is accessible.",
-            provider = "nvidia"
-          ))
-        }
-        stop(ProviderUnavailableError(sprintf("Provider unavailable: %s", name)))
+      # For explicit NVIDIA selection, check credentials
+      if (name == "nvidia" && !provider$has_credentials()) {
+        stop(ProviderUnavailableError(
+          "NVIDIA provider selected but no API key found. Set NVIDIA_API_KEY environment variable or use rchat_set_key('nvidia').",
+          provider = "nvidia"
+        ))
       }
       
       provider

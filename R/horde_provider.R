@@ -1,6 +1,10 @@
 #' AI Horde Provider
 #'
 #' Provider for AI Horde - a free, distributed AI inference network.
+#' Uses the official text-generation endpoints:
+#'   - POST /api/v2/generate/text/async
+#'   - GET  /api/v2/generate/text/status/{id}
+#'   - GET  /api/v2/status/models?type=text
 #' https://aihorde.net/api/
 #'
 #' @keywords internal
@@ -18,11 +22,18 @@ AIHordeProvider <- R6::R6Class(
       super$initialize("horde")
     },
     
-    #' @description Fetch available models from AI Horde
+    #' @description Check if provider is available (AI Horde is generally available for anonymous access)
+    #' @return Logical
+    is_available = function() {
+      TRUE  # AI Horde allows anonymous access, so always available
+    },
+    
+    #' @description Fetch available text models from AI Horde
     #' @return List of model info
     fetch_models = function() {
       req <- httr2::request(self$base_url) %>%
         httr2::req_url_path_append("status/models") %>%
+        httr2::req_url_query(type = "text") %>%
         httr2::req_headers(
           "Content-Type" = "application/json",
           "User-Agent" = self$client_id
@@ -41,27 +52,29 @@ AIHordeProvider <- R6::R6Class(
       
       data <- httr2::resp_body_json(resp)
       
-      # Filter for text generation models with available workers
+      # Filter for models with available workers
       models <- data
       if (is.list(models) && length(models) > 0) {
-        # Keep models that have workers available
         models <- Filter(function(m) {
           isTRUE(m$count > 0) || (is.list(m$workers) && length(m$workers) > 0)
         }, models)
       }
       
       # Sort by worker count descending
-      models <- models[order(-sapply(models, function(m) m$count %||% 0))]
+      if (length(models) > 0) {
+        models <- models[order(-vapply(models, function(m) m$count %||% 0, numeric(1)))]
+      }
       
       models
     },
     
-    #' @description Submit async generation request to AI Horde
-    #' @param payload Request payload
+    #' @description Submit async text generation request to AI Horde
+    #' Uses POST /api/v2/generate/text/async
+    #' @param payload Request payload (prompt, params, models)
     #' @return Job UUID
     submit_generation = function(payload) {
       req <- httr2::request(self$base_url) %>%
-        httr2::req_url_path_append("generate/async") %>%
+        httr2::req_url_path_append("generate", "text", "async") %>%
         httr2::req_headers(
           "Content-Type" = "application/json",
           "User-Agent" = self$client_id,
@@ -72,17 +85,18 @@ AIHordeProvider <- R6::R6Class(
         httr2::req_error(is_error = function(resp) FALSE)
       
       resp <- httr2::req_perform(req)
+      status <- httr2::resp_status(resp)
       
-      if (httr2::resp_status(resp) == 429) {
+      if (status == 429) {
         stop(RateLimitError("AI Horde rate limit exceeded", provider = "horde"))
       }
-      if (httr2::resp_status(resp) == 401) {
+      if (status == 401 || status == 403) {
         stop(AuthenticationError("AI Horde authentication failed", provider = "horde"))
       }
-      if (httr2::resp_status(resp) != 200 && httr2::resp_status(resp) != 202) {
+      if (status != 200 && status != 202) {
         body <- httr2::resp_body_string(resp)
         stop(ProviderError(
-          sprintf("AI Horde generation submit failed: %d - %s", httr2::resp_status(resp), body),
+          sprintf("AI Horde text generation submit failed: %d - %s", status, body),
           provider = "horde"
         ))
       }
@@ -91,21 +105,28 @@ AIHordeProvider <- R6::R6Class(
       data$id
     },
     
-    #' @description Check job status
+    #' @description Check text generation job status
+    #' Uses GET /api/v2/generate/text/status/{id}
     #' @param job_id Job UUID
     #' @return Job status data
     check_status = function(job_id) {
       req <- httr2::request(self$base_url) %>%
-        httr2::req_url_path_append("generate/check") %>%
-        httr2::req_url_query(id = job_id) %>%
+        httr2::req_url_path_append("generate", "text", "status", job_id) %>%
         httr2::req_headers(
-          "User-Agent" = self$client_id
+          "User-Agent" = self$client_id,
+          "apikey" = "0000000000"
         ) %>%
         httr2::req_timeout(30) %>%
         httr2::req_error(is_error = function(resp) FALSE)
       
       resp <- httr2::req_perform(req)
       
+      if (httr2::resp_status(resp) == 404) {
+        stop(ProviderError(
+          sprintf("AI Horde job not found: %s", job_id),
+          provider = "horde"
+        ))
+      }
       if (httr2::resp_status(resp) != 200) {
         stop(ProviderError(
           sprintf("AI Horde status check failed: %d", httr2::resp_status(resp)),
@@ -146,7 +167,7 @@ AIHordeProvider <- R6::R6Class(
         }
         
         # Show progress
-        if (!is.null(status$wait_time)) {
+        if (!is.null(status$wait_time) && status$wait_time > 0) {
           wait_msg <- sprintf("Queue position: %s, estimated wait: %ds", 
                             status$queue_position %||% "unknown", 
                             status$wait_time %||% 0)
@@ -167,30 +188,34 @@ AIHordeProvider <- R6::R6Class(
     chat = function(messages, model = NULL, max_tokens = 700, temperature = 0.7, stream = FALSE) {
       # Get models if not specified
       if (is.null(model)) {
-        models <- self$get_models()
-        if (length(models) == 0) {
-          stop(ProviderUnavailableError("No AI Horde models available", provider = "horde"))
+        models <- tryCatch(self$get_models(), error = function(e) list())
+        if (length(models) > 0) {
+          model <- models[[1]]$name
+        } else {
+          # Default fallback model if API is unreachable or no workers
+          model <- "koboldcpp/LLaMA2-13B-Tiefighter"
         }
-        # Pick first available model
-        model <- models[[1]]$name
       }
       
       # Convert messages to prompt format
       prompt <- self$messages_to_prompt(messages)
       
+      # AI Horde text generation payload
+      # See: https://aihorde.net/api/ POST /api/v2/generate/text/async
       payload <- list(
         prompt = prompt,
         params = list(
-          max_new_tokens = max_tokens,
+          max_context_length = 4096,
+          max_length = max_tokens,
           temperature = temperature,
           top_p = 0.9,
-          repetition_penalty = 1.1,
+          top_k = 0,
+          rep_pen = 1.1,
           do_sample = TRUE
         ),
         models = list(model),
         trusted_workers = FALSE,
-        shared = TRUE,
-        r2 = TRUE
+        shared = TRUE
       )
       
       job_id <- self$submit_generation(payload)

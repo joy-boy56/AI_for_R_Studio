@@ -32,22 +32,29 @@ rchat_set_key <- function(provider = c("nvidia"), key = NULL) {
   )
   
   if (is.null(key)) {
-    # Interactive prompt
-    cat(sprintf("Enter your %s API key (input hidden): ", toupper(provider)))
-    key <- readline(prompt = "")
+    # Use getPass for hidden input if available, otherwise warn about visible input
+    if (requireNamespace("getPass", quietly = TRUE)) {
+      key <- getPass::getPass(sprintf("Enter your %s API key: ", toupper(provider)))
+    } else {
+      cat("Note: Install 'getPass' package for hidden password input.\n")
+      cat("Warning: Input will be visible on screen.\n")
+      key <- readline(prompt = sprintf("Enter your %s API key: ", toupper(provider)))
+    }
     if (is.null(key) || nchar(trimws(key)) == 0) {
       stop("No key provided")
     }
     key <- trimws(key)
   }
   
-  # Try to use keyring
+  # Try to use keyring for secure storage
   keyring_available <- requireNamespace("keyring", quietly = TRUE)
   
   if (keyring_available) {
     tryCatch({
       keyring::key_set_with_value("rconsoleai", key_name, key)
       cat(sprintf("%s key stored securely in system credential manager.\n", toupper(provider)))
+      # Clear key from memory as best we can
+      rm(key)
       return(invisible(TRUE))
     }, error = function(e) {
       cat("Warning: Could not store in credential manager: ", e$message, "\n", sep = "")
@@ -57,14 +64,16 @@ rchat_set_key <- function(provider = c("nvidia"), key = NULL) {
     cat("Note: Install 'keyring' package for secure credential storage.\n")
   }
   
-  # Fallback: provide instructions for .Renviron
-  cat(sprintf("\nTo persist this key, add to your ~/.Renviron:\n"))
-  cat(sprintf("%s=\"%s\"\n", key_name, key))
-  cat("\nThen restart R for changes to take effect.\n")
+  # Fallback: instruct user to add to .Renviron manually (never print the key)
+  cat(sprintf("\nTo persist this key, add the following line to your ~/.Renviron:\n"))
+  cat(sprintf("  %s=\"<your-key-here>\"\n", key_name))
+  cat("Then restart R for changes to take effect.\n")
+  cat("Alternatively, use rchat_edit_renviron() to open the file.\n")
   
   # Set for current session
   do.call(Sys.setenv, stats::setNames(list(key), key_name))
   cat("Key set for current session.\n")
+  rm(key)
   
   invisible(TRUE)
 }
