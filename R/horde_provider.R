@@ -33,7 +33,7 @@ AIHordeProvider <- R6::R6Class(
       resp <- httr2::req_perform(req)
       
       if (httr2::resp_status(resp) != 200) {
-        stop(ProviderError$new(
+        stop(ProviderError(
           sprintf("AI Horde models request failed: %d", httr2::resp_status(resp)),
           provider = "horde"
         ))
@@ -74,14 +74,14 @@ AIHordeProvider <- R6::R6Class(
       resp <- httr2::req_perform(req)
       
       if (httr2::resp_status(resp) == 429) {
-        stop(RateLimitError$new("AI Horde rate limit exceeded", provider = "horde"))
+        stop(RateLimitError("AI Horde rate limit exceeded", provider = "horde"))
       }
       if (httr2::resp_status(resp) == 401) {
-        stop(AuthenticationError$new("AI Horde authentication failed", provider = "horde"))
+        stop(AuthenticationError("AI Horde authentication failed", provider = "horde"))
       }
       if (httr2::resp_status(resp) != 200 && httr2::resp_status(resp) != 202) {
         body <- httr2::resp_body_string(resp)
-        stop(ProviderError$new(
+        stop(ProviderError(
           sprintf("AI Horde generation submit failed: %d - %s", httr2::resp_status(resp), body),
           provider = "horde"
         ))
@@ -107,7 +107,7 @@ AIHordeProvider <- R6::R6Class(
       resp <- httr2::req_perform(req)
       
       if (httr2::resp_status(resp) != 200) {
-        stop(ProviderError$new(
+        stop(ProviderError(
           sprintf("AI Horde status check failed: %d", httr2::resp_status(resp)),
           provider = "horde"
         ))
@@ -127,7 +127,7 @@ AIHordeProvider <- R6::R6Class(
       while (TRUE) {
         elapsed <- as.numeric(Sys.time() - start_time, units = "secs")
         if (elapsed > max_wait) {
-          stop(TimeoutError$new(
+          stop(TimeoutError(
             sprintf("AI Horde generation timed out after %d seconds", max_wait),
             provider = "horde"
           ))
@@ -137,7 +137,7 @@ AIHordeProvider <- R6::R6Class(
         
         if (isTRUE(status$done)) {
           if (!is.null(status$faulted) && isTRUE(status$faulted)) {
-            stop(ProviderError$new(
+            stop(ProviderError(
               sprintf("AI Horde generation faulted: %s", status$message %||% "Unknown error"),
               provider = "horde"
             ))
@@ -169,7 +169,7 @@ AIHordeProvider <- R6::R6Class(
       if (is.null(model)) {
         models <- self$get_models()
         if (length(models) == 0) {
-          stop(ProviderUnavailableError$new("No AI Horde models available", provider = "horde"))
+          stop(ProviderUnavailableError("No AI Horde models available", provider = "horde"))
         }
         # Pick first available model
         model <- models[[1]]$name
@@ -204,7 +204,7 @@ AIHordeProvider <- R6::R6Class(
         }
       }
       
-      stop(ProviderError$new("No generation returned from AI Horde", provider = "horde"))
+      stop(ProviderError("No generation returned from AI Horde", provider = "horde"))
     },
     
     #' @description Convert messages to prompt string
@@ -242,6 +242,3 @@ AIHordeProvider <- R6::R6Class(
     }
   )
 )
-
-# Null coalescing operator
-`%||%` <- function(x, y) if (is.null(x)) y else x

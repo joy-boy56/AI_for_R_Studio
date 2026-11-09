@@ -73,51 +73,73 @@ ProviderBase <- R6::R6Class(
   )
 )
 
-#' Provider Errors
+#' Provider Error Conditions
+#'
+#' S3 condition classes for provider errors. Use these with stop() to signal
+#' provider-specific errors that can be caught with tryCatch().
+#'
+#' @param message Error message
+#' @param provider Provider name
+#' @return A condition object
 #' @keywords internal
-ProviderError <- R6::R6Class(
-  "ProviderError",
-  inherit = Error,
-  public = list(
-    provider = NULL,
-    initialize = function(message, provider = NULL) {
-      self$provider <- provider
-      super$initialize(message)
-    }
+ProviderError <- function(message, provider = NULL) {
+  structure(
+    list(message = message, provider = provider),
+    class = c("ProviderError", "error", "condition")
   )
-)
+}
 
 #' Timeout Error
+#' @param message Error message
+#' @param provider Provider name
 #' @keywords internal
-TimeoutError <- R6::R6Class(
-  "TimeoutError",
-  inherit = ProviderError
-)
+TimeoutError <- function(message, provider = NULL) {
+  structure(
+    list(message = message, provider = provider),
+    class = c("TimeoutError", "ProviderError", "error", "condition")
+  )
+}
 
 #' Rate Limit Error
+#' @param message Error message
+#' @param provider Provider name
 #' @keywords internal
-RateLimitError <- R6::R6Class(
-  "RateLimitError",
-  inherit = ProviderError
-)
+RateLimitError <- function(message, provider = NULL) {
+  structure(
+    list(message = message, provider = provider),
+    class = c("RateLimitError", "ProviderError", "error", "condition")
+  )
+}
 
 #' Authentication Error
+#' @param message Error message
+#' @param provider Provider name
 #' @keywords internal
-AuthenticationError <- R6::R6Class(
-  "AuthenticationError",
-  inherit = ProviderError
-)
+AuthenticationError <- function(message, provider = NULL) {
+  structure(
+    list(message = message, provider = provider),
+    class = c("AuthenticationError", "ProviderError", "error", "condition")
+  )
+}
 
 #' Model Not Found Error
+#' @param message Error message
+#' @param provider Provider name
 #' @keywords internal
-ModelNotFoundError <- R6::R6Class(
-  "ModelNotFoundError",
-  inherit = ProviderError
-)
+ModelNotFoundError <- function(message, provider = NULL) {
+  structure(
+    list(message = message, provider = provider),
+    class = c("ModelNotFoundError", "ProviderError", "error", "condition")
+  )
+}
 
 #' Provider Unavailable Error
+#' @param message Error message
+#' @param provider Provider name
 #' @keywords internal
-ProviderUnavailableError <- R6::R6Class(
-  "ProviderUnavailableError",
-  inherit = ProviderError
-)
+ProviderUnavailableError <- function(message, provider = NULL) {
+  structure(
+    list(message = message, provider = provider),
+    class = c("ProviderUnavailableError", "ProviderError", "error", "condition")
+  )
+}

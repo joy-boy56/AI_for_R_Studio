@@ -623,5 +623,3 @@ rchat_system_prompt <- function(prompt = NULL) {
   cat("System prompt updated.\n")
   invisible(prompt)
 }
-
-`%||%` <- function(x, y) if (is.null(x)) y else x

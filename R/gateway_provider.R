@@ -59,7 +59,7 @@ GatewayProvider <- R6::R6Class(
     #' @return Response text
     chat = function(messages, model = NULL, max_tokens = 700, temperature = 0.7, stream = FALSE) {
       if (is.null(self$gateway_url)) {
-        stop(ProviderUnavailableError$new("Gateway URL not configured", provider = "gateway"))
+        stop(ProviderUnavailableError("Gateway URL not configured", provider = "gateway"))
       }
       
       payload <- list(
@@ -86,17 +86,17 @@ GatewayProvider <- R6::R6Class(
       status <- httr2::resp_status(resp)
       
       if (status == 429) {
-        stop(RateLimitError$new("Gateway rate limit exceeded", provider = "gateway"))
+        stop(RateLimitError("Gateway rate limit exceeded", provider = "gateway"))
       }
       if (status == 401) {
-        stop(AuthenticationError$new("Gateway authentication failed", provider = "gateway"))
+        stop(AuthenticationError("Gateway authentication failed", provider = "gateway"))
       }
       if (status == 404) {
-        stop(ModelNotFoundError$new("Model not found on gateway", provider = "gateway"))
+        stop(ModelNotFoundError("Model not found on gateway", provider = "gateway"))
       }
       if (status != 200) {
         body <- httr2::resp_body_string(resp)
-        stop(ProviderError$new(
+        stop(ProviderError(
           sprintf("Gateway request failed: %d - %s", status, body),
           provider = "gateway"
         ))
@@ -125,7 +125,7 @@ GatewayProvider <- R6::R6Class(
         return(data$content)
       }
       
-      stop(ProviderError$new("No response content from gateway", provider = "gateway"))
+      stop(ProviderError("No response content from gateway", provider = "gateway"))
     },
     
     #' @description Check if gateway is available
@@ -145,5 +145,3 @@ GatewayProvider <- R6::R6Class(
     }
   )
 )
-
-`%||%` <- function(x, y) if (is.null(x)) y else x

@@ -128,7 +128,7 @@ NVIDIAProvider <- R6::R6Class(
     chat = function(messages, model = NULL, max_tokens = 700, temperature = 0.7, stream = FALSE) {
       api_key <- self$get_api_key()
       if (is.null(api_key)) {
-        stop(AuthenticationError$new(
+        stop(AuthenticationError(
           "NVIDIA API key not found. Set NVIDIA_API_KEY environment variable or use keyring.",
           provider = "nvidia"
         ))
@@ -168,44 +168,44 @@ NVIDIAProvider <- R6::R6Class(
       # Handle HTTP errors
       if (status == 400) {
         body <- httr2::resp_body_string(resp)
-        stop(ProviderError$new(
+        stop(ProviderError(
           sprintf("Bad request: %s", body),
           provider = "nvidia"
         ))
       }
       if (status == 401) {
-        stop(AuthenticationError$new(
+        stop(AuthenticationError(
           "Invalid NVIDIA API key. Check your credentials.",
           provider = "nvidia"
         ))
       }
       if (status == 403) {
-        stop(ProviderError$new(
+        stop(ProviderError(
           "Access forbidden. Your API key may not have access to this model.",
           provider = "nvidia"
         ))
       }
       if (status == 404) {
-        stop(ModelNotFoundError$new(
+        stop(ModelNotFoundError(
           sprintf("Model not found: %s", model),
           provider = "nvidia"
         ))
       }
       if (status == 429) {
-        stop(RateLimitError$new(
+        stop(RateLimitError(
           "Rate limit exceeded. Please wait before retrying.",
           provider = "nvidia"
         ))
       }
       if (status >= 500) {
-        stop(ProviderError$new(
+        stop(ProviderError(
           sprintf("NVIDIA server error: %d", status),
           provider = "nvidia"
         ))
       }
       if (status != 200) {
         body <- httr2::resp_body_string(resp)
-        stop(ProviderError$new(
+        stop(ProviderError(
           sprintf("NVIDIA API error: %d - %s", status, body),
           provider = "nvidia"
         ))
@@ -224,7 +224,7 @@ NVIDIAProvider <- R6::R6Class(
         }
       }
       
-      stop(ProviderError$new("No response content from NVIDIA", provider = "nvidia"))
+      stop(ProviderError("No response content from NVIDIA", provider = "nvidia"))
     },
     
     #' @description Stream chat completion via Server-Sent Events
@@ -282,6 +282,3 @@ NVIDIAProvider <- R6::R6Class(
     }
   )
 )
-
-# Null coalescing operator
-`%||%` <- function(x, y) if (is.null(x)) y else x

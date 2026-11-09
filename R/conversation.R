@@ -152,5 +152,3 @@ Conversation <- R6::R6Class(
     }
   )
 )
-
-`%||%` <- function(x, y) if (is.null(x)) y else x

@@ -77,22 +77,22 @@ ProviderManager <- R6::R6Class(
         if (horde$is_available()) {
           return(horde)
         }
-        stop(ProviderUnavailableError$new("No providers available"))
+        stop(ProviderUnavailableError("No providers available"))
       }
       
       provider <- self$providers[[name]]
       if (is.null(provider)) {
-        stop(ProviderError$new(sprintf("Provider not found: %s", name)))
+        stop(ProviderError(sprintf("Provider not found: %s", name)))
       }
       
       if (!provider$is_available()) {
         if (name == "nvidia") {
-          stop(ProviderUnavailableError$new(
+          stop(ProviderUnavailableError(
             "NVIDIA provider unavailable. Check NVIDIA_API_KEY is set and model is accessible.",
             provider = "nvidia"
           ))
         }
-        stop(ProviderUnavailableError$new(sprintf("Provider unavailable: %s", name)))
+        stop(ProviderUnavailableError(sprintf("Provider unavailable: %s", name)))
       }
       
       provider
@@ -174,5 +174,3 @@ get_provider <- function(name) {
 set_provider <- function(name) {
   get_provider_manager()$set_provider(name)
 }
-
-`%||%` <- function(x, y) if (is.null(x)) y else x

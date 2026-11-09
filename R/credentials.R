@@ -63,7 +63,7 @@ rchat_set_key <- function(provider = c("nvidia"), key = NULL) {
   cat("\nThen restart R for changes to take effect.\n")
   
   # Set for current session
-  Sys.setenv(!!key_name := key)
+  do.call(Sys.setenv, stats::setNames(list(key), key_name))
   cat("Key set for current session.\n")
   
   invisible(TRUE)

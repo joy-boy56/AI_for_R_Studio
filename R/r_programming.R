@@ -50,7 +50,7 @@ rchat_code <- function(code, context = "", provider = NULL, model = NULL) {
   )
   
   process_single_prompt(prompt, selected_provider, conversation,
-                        rconsoleai_options("max_tokens"), 0.3)
+                        rconsoleai_options("max_tokens"), 0.3, pm)
 }
 
 #' Explain R Code
@@ -98,7 +98,7 @@ rchat_explain <- function(code, detail = "normal", provider = NULL, model = NULL
   )
   
   process_single_prompt(prompt, selected_provider, conversation,
-                        rconsoleai_options("max_tokens"), 0.3)
+                        rconsoleai_options("max_tokens"), 0.3, pm)
 }
 
 #' Analyze Dataset with AI
@@ -161,7 +161,7 @@ rchat_data <- function(data, name = NULL, include_data = FALSE,
   )
   
   process_single_prompt(prompt, selected_provider, conversation,
-                        rconsoleai_options("max_tokens"), 0.4)
+                        rconsoleai_options("max_tokens"), 0.4, pm)
 }
 
 #' Generate R Code
@@ -206,7 +206,7 @@ rchat_generate <- function(task, packages = "tidyverse", provider = NULL, model 
   )
   
   process_single_prompt(prompt, selected_provider, conversation,
-                        rconsoleai_options("max_tokens"), 0.3)
+                        rconsoleai_options("max_tokens"), 0.3, pm)
 }
 
 #' Ask Question About R Environment
@@ -251,5 +251,5 @@ rchat_env <- function(question, include_values = FALSE, provider = NULL, model =
   )
   
   process_single_prompt(prompt, selected_provider, conversation,
-                        rconsoleai_options("max_tokens"), 0.3)
+                        rconsoleai_options("max_tokens"), 0.3, pm)
 }
