@@ -268,7 +268,8 @@ list_models <- function(provider, pm) {
   }
   
   cat("\nAvailable Models:\n")
-  for (i, m in enumerate(models)) {
+  for (i in seq_along(models)) {
+    m <- models[[i]]
     name <- m$name %||% m$id %||% "unknown"
     workers <- m$count %||% length(m$workers %||% list())
     current <- ""
@@ -428,7 +429,8 @@ print_history <- function(conversation) {
   }
   
   cat("\n--- Conversation History ---\n")
-  for (i, msg in enumerate(conversation$messages)) {
+  for (i in seq_along(conversation$messages)) {
+    msg <- conversation$messages[[i]]
     role <- toupper(msg$role)
     content <- substr(msg$content, 1, 100)
     if (nchar(msg$content) > 100) content <- paste0(content, "...")
@@ -620,12 +622,6 @@ rchat_system_prompt <- function(prompt = NULL) {
   rconsoleai_options(system_prompt = prompt)
   cat("System prompt updated.\n")
   invisible(prompt)
-}
-
-# Helper: enumerate for loop with index
-enumerate <- function(x) {
-  if (length(x) == 0) return(integer(0))
-  seq_along(x)
 }
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
