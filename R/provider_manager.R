@@ -142,16 +142,12 @@ ProviderManager <- R6::R6Class(
   )
 )
 
-# Global provider manager instance
-.provider_manager <- NULL
-
-#' Get or create global provider manager
-#' @return ProviderManager instance
+# Global provider manager instance (stored in function attribute to avoid namespace locking)
 get_provider_manager <- function() {
-  if (is.null(.provider_manager)) {
-    .provider_manager <<- ProviderManager$new()
+  if (is.null(attr(get_provider_manager, "instance"))) {
+    attr(get_provider_manager, "instance") <- ProviderManager$new()
   }
-  .provider_manager
+  attr(get_provider_manager, "instance")
 }
 
 #' List Available Providers
