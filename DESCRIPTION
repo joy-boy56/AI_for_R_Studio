@@ -9,7 +9,8 @@ Description: An AI chatbot that works directly inside the R and RStudio Console.
     Provides interactive chat sessions, code debugging, code explanation,
     dataset assistance, and code generation capabilities. Uses AI Horde as
     the default free provider with optional secure backend integration for
-    additional providers. No local models or API keys required for basic usage.
+    additional providers. Supports personal NVIDIA Nemotron via direct API
+    access. No local models or API keys required for basic usage.
 License: MIT + file LICENSE
 URL: https://github.com/yourusername/rconsoleai
 BugReports: https://github.com/yourusername/rconsoleai/issues
@@ -23,7 +24,8 @@ Imports:
 Suggests:
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    keyring (>= 1.3.0)
 Config/testthat/edition: 3
 Config/Needs/website: rconsoleai
 Depends:

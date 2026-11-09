@@ -4,7 +4,7 @@
 #' and single-prompt queries.
 #'
 #' @param prompt Optional single prompt. If NULL, starts interactive session.
-#' @param provider Provider to use ("horde", "gateway", "auto")
+#' @param provider Provider to use ("horde", "nvidia", "gateway", "auto")
 #' @param model Model name (NULL for auto)
 #' @param system_prompt Custom system prompt
 #' @param max_tokens Maximum response tokens
@@ -22,6 +22,7 @@
 #' 
 #' # With specific provider
 #' rchat("Hello", provider = "horde")
+#' rchat("Hello", provider = "nvidia")
 #' }
 rchat <- function(prompt = NULL,
                   provider = NULL,
@@ -60,16 +61,16 @@ rchat <- function(prompt = NULL,
   # If single prompt, process and return
   if (!is.null(prompt)) {
     return(process_single_prompt(prompt, selected_provider, conversation, 
-                                 max_tokens, temperature))
+                                 max_tokens, temperature, pm))
   }
   
   # Interactive session
-  run_interactive_session(selected_provider, conversation, max_tokens, temperature)
+  run_interactive_session(selected_provider, conversation, max_tokens, temperature, pm)
 }
 
 #' Process a single prompt and return response
 #' @keywords internal
-process_single_prompt <- function(prompt, provider, conversation, max_tokens, temperature) {
+process_single_prompt <- function(prompt, provider, conversation, max_tokens, temperature, pm) {
   conversation$add_message("user", prompt)
   
   # Show progress
@@ -107,8 +108,8 @@ process_single_prompt <- function(prompt, provider, conversation, max_tokens, te
 
 #' Run interactive chat session
 #' @keywords internal
-run_interactive_session <- function(provider, conversation, max_tokens, temperature) {
-  print_banner(provider)
+run_interactive_session <- function(provider, conversation, max_tokens, temperature, pm) {
+  print_banner(provider, pm)
   
   repeat {
     cat("\nYou: ")
@@ -122,7 +123,7 @@ run_interactive_session <- function(provider, conversation, max_tokens, temperat
     
     # Handle slash commands
     if (startsWith(input, "/")) {
-      result <- handle_slash_command(input, provider, conversation, max_tokens, temperature)
+      result <- handle_slash_command(input, provider, conversation, max_tokens, temperature, pm)
       if (identical(result, "exit")) break
       next
     }
@@ -169,7 +170,7 @@ run_interactive_session <- function(provider, conversation, max_tokens, temperat
 
 #' Print startup banner
 #' @keywords internal
-print_banner <- function(provider) {
+print_banner <- function(provider, pm) {
   cat("\n")
   cat("========================================\n")
   cat("          RConsoleAI\n")
@@ -197,7 +198,7 @@ print_banner <- function(provider) {
 
 #' Handle slash commands
 #' @keywords internal
-handle_slash_command <- function(input, provider, conversation, max_tokens, temperature) {
+handle_slash_command <- function(input, provider, conversation, max_tokens, temperature, pm) {
   parts <- strsplit(input, " ")[[1]]
   cmd <- tolower(parts[1])
   args <- parts[-1]
@@ -210,12 +211,12 @@ handle_slash_command <- function(input, provider, conversation, max_tokens, temp
       conversation$clear()
       cat("Conversation cleared.\n")
     },
-    "/models" = list_models(provider),
-    "/model" = handle_model_command(args, provider),
+    "/models" = list_models(provider, pm),
+    "/model" = handle_model_command(args, provider, pm),
     "/provider" = handle_provider_command(args),
     "/system" = handle_system_command(args, conversation),
-    "/status" = print_status(provider, conversation),
-    "/retry" = handle_retry(conversation, provider, max_tokens, temperature),
+    "/status" = print_status(provider, conversation, pm),
+    "/retry" = handle_retry(conversation, provider, max_tokens, temperature, pm),
     "/save" = handle_save(args, conversation),
     "/load" = handle_load(args, conversation),
     "/history" = print_history(conversation),
@@ -241,6 +242,7 @@ print_help <- function() {
   cat("  /model NAME        Change model\n")
   cat("  /provider          Show current provider\n")
   cat("  /provider horde    Select AI Horde\n")
+  cat("  /provider nvidia   Select NVIDIA Nemotron\n")
   cat("  /provider gateway  Select secure backend\n")
   cat("  /provider auto     Enable auto selection\n")
   cat("  /system            Show system prompt\n")
@@ -256,7 +258,7 @@ print_help <- function() {
 
 #' List available models
 #' @keywords internal
-list_models <- function(provider) {
+list_models <- function(provider, pm) {
   cat("\nFetching models...\n")
   models <- tryCatch(provider$get_models(), error = function(e) NULL)
   
@@ -280,7 +282,7 @@ list_models <- function(provider) {
 
 #' Handle model command
 #' @keywords internal
-handle_model_command <- function(args, provider) {
+handle_model_command <- function(args, provider, pm) {
   if (length(args) == 0) {
     model <- pm$get_model()
     if (is.null(model)) {
@@ -324,7 +326,7 @@ handle_provider_command <- function(args) {
   }
   
   provider_name <- tolower(args[1])
-  valid <- c("horde", "gateway", "auto")
+  valid <- c("horde", "nvidia", "gateway", "auto")
   
   if (!provider_name %in% valid) {
     cat("Invalid provider: ", provider_name, "\n", sep = "")
@@ -359,7 +361,7 @@ handle_system_command <- function(args, conversation) {
 
 #' Print status
 #' @keywords internal
-print_status <- function(provider, conversation) {
+print_status <- function(provider, conversation, pm) {
   cat("\n--- RConsoleAI Status ---\n")
   cat("Provider: ", toupper(provider$name), "\n", sep = "")
   cat("Model: ", pm$get_model() %||% "auto", "\n", sep = "")
@@ -375,7 +377,7 @@ print_status <- function(provider, conversation) {
 
 #' Handle retry
 #' @keywords internal
-handle_retry <- function(conversation, provider, max_tokens, temperature) {
+handle_retry <- function(conversation, provider, max_tokens, temperature, pm) {
   last_user <- conversation$get_last_user_message()
   if (is.null(last_user)) {
     cat("No previous message to retry.\n")
@@ -391,7 +393,7 @@ handle_retry <- function(conversation, provider, max_tokens, temperature) {
   }
   
   cat("Retrying: ", last_user, "\n", sep = "")
-  process_single_prompt(last_user, provider, conversation, max_tokens, temperature)
+  process_single_prompt(last_user, provider, conversation, max_tokens, temperature, pm)
 }
 
 #' Handle save
@@ -445,7 +447,7 @@ print_context <- function() {
 
 #' Set or get chat provider
 #'
-#' @param provider Provider name ("horde", "gateway", "auto")
+#' @param provider Provider name ("horde", "nvidia", "gateway", "auto")
 #' @return Current provider name (invisible)
 #' @export
 rchat_provider <- function(provider = NULL) {
@@ -602,7 +604,7 @@ rchat_load <- function(file = "rconsoleai_conversation.rds") {
 rchat_status <- function() {
   pm <- get_provider_manager()
   provider <- tryCatch(pm$resolve_provider(), error = function(e) NULL)
-  print_status(provider, Conversation$new())
+  print_status(provider, Conversation$new(), pm)
 }
 
 #' Get or set system prompt

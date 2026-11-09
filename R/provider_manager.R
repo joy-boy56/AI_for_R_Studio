@@ -16,6 +16,7 @@ ProviderManager <- R6::R6Class(
     #' @description Initialize provider manager
     initialize = function() {
       self$register_provider(AIHordeProvider$new())
+      self$register_provider(NVIDIAProvider$new())
       self$register_provider(GatewayProvider$new())
     },
     
@@ -39,9 +40,9 @@ ProviderManager <- R6::R6Class(
     },
     
     #' @description Set current provider
-    #' @param name Provider name ("horde", "gateway", "auto")
+    #' @param name Provider name ("horde", "nvidia", "gateway", "auto")
     set_provider = function(name) {
-      valid <- c("auto", "horde", "gateway")
+      valid <- c("auto", "horde", "nvidia", "gateway")
       if (!name %in% valid) {
         stop(sprintf("Invalid provider: %s. Valid: %s", name, paste(valid, collapse = ", ")))
       }
@@ -61,7 +62,12 @@ ProviderManager <- R6::R6Class(
       name <- self$current_provider_name
       
       if (name == "auto") {
-        # Try gateway first if configured and available
+        # Try NVIDIA first if credentials are available
+        nvidia <- self$providers[["nvidia"]]
+        if (!is.null(nvidia) && nvidia$has_credentials() && nvidia$is_available()) {
+          return(nvidia)
+        }
+        # Try gateway if configured and available
         gateway <- self$providers[["gateway"]]
         if (!is.null(gateway$gateway_url) && gateway$is_available()) {
           return(gateway)
@@ -80,6 +86,12 @@ ProviderManager <- R6::R6Class(
       }
       
       if (!provider$is_available()) {
+        if (name == "nvidia") {
+          stop(ProviderUnavailableError$new(
+            "NVIDIA provider unavailable. Check NVIDIA_API_KEY is set and model is accessible.",
+            provider = "nvidia"
+          ))
+        }
         stop(ProviderUnavailableError$new(sprintf("Provider unavailable: %s", name)))
       }
       
@@ -161,7 +173,7 @@ get_provider <- function(name) {
 
 #' Set Current Provider
 #'
-#' @param name Provider name ("horde", "gateway", "auto")
+#' @param name Provider name ("horde", "nvidia", "gateway", "auto")
 #' @export
 set_provider <- function(name) {
   get_provider_manager()$set_provider(name)

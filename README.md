@@ -12,7 +12,11 @@ RConsoleAI lets you chat with AI models, debug code, explain code, analyze datas
 
 - **Interactive Chat**: Run `rchat()` for a continuous conversation in your R console
 - **Single Prompts**: `rchat("Explain pnorm in R")` for quick questions
-- **Multiple Providers**: AI Horde (free, default), secure backend gateway (NVIDIA Nemotron, OpenAI-compatible)
+- **Multiple Providers**: 
+  - **AI Horde** (free, default) - anonymous distributed inference
+  - **NVIDIA Nemotron** (personal) - direct API access with your own key
+  - **Secure Backend Gateway** (optional) - NVIDIA, OpenAI-compatible via Cloudflare
+- **Personal Credentials**: Secure key management via OS credential manager (`keyring`)
 - **Slash Commands**: `/help`, `/models`, `/provider`, `/system`, `/save`, `/load`, and more
 - **R Programming Integration**:
   - `rchat_code()` - Debug and review R code
@@ -22,7 +26,7 @@ RConsoleAI lets you chat with AI models, debug code, explain code, analyze datas
 - **Conversation Memory**: Persistent history across sessions
 - **Model Discovery**: Dynamic model listing with worker availability
 - **Zero Configuration**: Works out of the box with AI Horde
-- **Privacy-First**: No data sent without consent; secrets never leave backend
+- **Privacy-First**: No data sent without consent; secrets never leave your machine
 
 ## Quick Start
 
@@ -71,26 +75,27 @@ install.packages("rconsoleai")
 
 - R >= 4.1.0
 - Internet connection (for AI Horde)
-- Optional: Cloudflare Workers backend for NVIDIA/OAI providers
+- Optional: Cloudflare Workers backend for shared NVIDIA/OAI providers
 
 ## Usage
 
 ### Interactive Chat
 
 ```r
-# Start interactive session
+# Start interactive session (auto-selects provider)
 rchat()
 
 # With specific provider
-rchat(provider = "horde")
-rchat(provider = "gateway")  # Requires backend
+rchat(provider = "horde")      # AI Horde (free, anonymous)
+rchat(provider = "nvidia")     # Your personal NVIDIA key
+rchat(provider = "gateway")    # Shared backend (requires deployment)
 ```
 
 ### Single Prompts
 
 ```r
 rchat("Explain the pnorm function in R.")
-rchat("How do I do a t-test in R?", provider = "horde")
+rchat("How do I do a t-test in R?", provider = "nvidia")
 ```
 
 ### Slash Commands
@@ -105,7 +110,8 @@ rchat("How do I do a t-test in R?", provider = "horde")
 | `/model NAME` | Change model |
 | `/provider` | Show current provider |
 | `/provider horde` | Use AI Horde |
-| `/provider gateway` | Use secure backend |
+| `/provider nvidia` | Use personal NVIDIA |
+| `/provider gateway` | Use shared backend |
 | `/provider auto` | Auto-select provider |
 | `/system` | Show system prompt |
 | `/system TEXT` | Update system prompt |
@@ -164,31 +170,82 @@ rchat_config(
 ### Provider Selection
 
 ```r
-# Auto (tries gateway first, falls back to AI Horde)
+# Auto: tries personal NVIDIA key → gateway → AI Horde
 rchat_provider("auto")
 
 # AI Horde only (free, no setup)
 rchat_provider("horde")
 
-# Secure backend (requires deployment)
+# Personal NVIDIA Nemotron (your own API key)
+rchat_provider("nvidia")
+
+# Shared backend (requires Cloudflare deployment)
 rchat_provider("gateway")
+```
+
+### Personal NVIDIA Nemotron Setup
+
+For direct NVIDIA API access with your own key:
+
+```r
+# Option 1: Set via environment variable (current session)
+Sys.setenv(NVIDIA_API_KEY = "your-nvidia-key")
+
+# Option 2: Store securely in OS credential manager (persistent)
+rchat_set_key("nvidia")  # Prompts for key, stores in keyring
+
+# Option 3: Add to ~/.Renviron (persistent across sessions)
+# NVIDIA_API_KEY="your-nvidia-key"
+
+# Then use NVIDIA directly
+rchat_provider("nvidia")
+rchat_config(model = "nvidia/nemotron-3.5-lightning-30b-a3b")
+rchat("Explain linear regression using R.")
+```
+
+**Windows `.Renviron` setup:**
+```r
+rchat_edit_renviron()  # Opens .Renviron in Notepad
+# Add: NVIDIA_API_KEY="your-key-here"
+# Restart R
+```
+
+### Credential Management
+
+```r
+# Store key securely (uses OS keyring if available)
+rchat_set_key("nvidia")
+
+# Test connection
+rchat_test_connection("nvidia")
+
+# Show credential status (keys never displayed)
+rchat_credential_status()
+
+# Remove stored key
+rchat_remove_key("nvidia")
 ```
 
 ## Provider Architecture
 
 ### AI Horde (Default, Free)
-
 - **No API key required** - uses anonymous access
 - **Distributed inference** - community-run workers
 - **Dynamic models** - discovers available models at runtime
 - **Async processing** - submits jobs, polls for results
 - **Limitations**: Queue times vary; not suitable for production SLAs
 
-### Secure Backend Gateway (Optional)
+### Personal NVIDIA Nemotron (Direct)
+- **Your own API key** - from [build.nvidia.com](https://build.nvidia.com/)
+- **Direct connection** - no intermediary, your key never leaves your machine
+- **Available models**: Nemotron 3 Ultra, Nemotron 3.5 Lightning, etc.
+- **No shared backend needed** - works immediately after setting key
+- **Secure storage** - OS credential manager (`keyring`) or `.Renviron`
 
-Deploy a Cloudflare Worker to access:
+### Secure Backend Gateway (Optional)
+Deploy a Cloudflare Worker for shared team access:
 - **NVIDIA Nemotron** - via NVIDIA API (requires authorization)
-- **OpenAI-compatible** - any compatible endpoint
+- **OpenAI-compatible** - any compatible endpoint (OpenAI, Azure, local)
 - **Rate limiting** - per-IP and global limits
 - **Credential isolation** - API keys stored only in Cloudflare secrets
 
@@ -196,12 +253,13 @@ Deploy a Cloudflare Worker to access:
 
 ## Backend Deployment (Optional)
 
-For NVIDIA Nemotron and other authenticated providers:
+For shared NVIDIA Nemotron and other authenticated providers:
 
 ```bash
 cd backend
 npm install
 npx wrangler secret put NVIDIA_API_KEY
+npx wrangler secret put OPENAI_API_KEY
 npx wrangler deploy
 ```
 
@@ -218,14 +276,14 @@ See [Backend Deployment Guide](backend/README.md) for details.
 
 - **No telemetry** - RConsoleAI collects no usage data
 - **Local history** - Conversations saved locally only (opt-in)
-- **No secrets in client** - API keys only in backend environment
+- **No secrets in client** - API keys only in your environment/keyring
 - **Consent for data** - `rchat_data(include_data = TRUE)` requires explicit consent
 - **No code execution** - AI-generated code is never auto-executed
 
 ## Limitations
 
 - AI Horde queue times can be 10-60+ seconds
-- No streaming support (AI Horde limitation)
+- No streaming support (AI Horde limitation; NVIDIA streaming not yet implemented)
 - Backend requires Cloudflare account (free tier available)
 - NVIDIA Nemotron requires separate authorization for shared use
 - Offline use not supported (requires internet for AI Horde)
@@ -256,6 +314,7 @@ See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 - [Cloudflare Workers](https://workers.cloudflare.com/) for serverless backend
 - [httr2](https://httr2.r-lib.org/) for HTTP client
 - [R6](https://r6.r-lib.org/) for OOP
+- [keyring](https://github.com/r-lib/keyring) for secure credential storage
 
 ---
 
